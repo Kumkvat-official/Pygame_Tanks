@@ -1,14 +1,15 @@
 import pygame as pg
 from sys import exit
 
-pg.font.init()
-
 
 class Tank(pg.sprite.Sprite):
     def __init__(self, file, x, y):
         pg.sprite.Sprite.__init__(self)
         self.images = file
-        self.image = pg.transform.scale(pg.image.load(self.images[0]), (50, 50))
+        if x == 120:
+            self.image = pg.transform.scale(pg.image.load(self.images[1]), (50, 50))
+        else:
+            self.image = pg.transform.scale(pg.image.load(self.images[0]), (50, 50))
         self.image.set_colorkey((255, 255, 255))
         self.rect = self.image.get_rect()
         self.rect.x = x - self.rect.width
@@ -19,7 +20,10 @@ class Tank(pg.sprite.Sprite):
         self.move_left = False
         self.made_a_shot = False
         self.shell = None
-        self.weapon = "up"
+        if x == 120:
+            self.weapon = "down"
+        else:
+            self.weapon = "up"
         self.win = False
 
     def move(self):
@@ -75,20 +79,16 @@ class Shell(pg.sprite.Sprite):
         if self.enemy.rect.x <= self.rect.x <= self.enemy.rect.x + 50 and self.enemy.rect.y <= self.rect.y <= \
                 self.enemy.rect.y + 50:
             self.tank.win = True
-        if 0 <= self.rect.x <= 50 and 250 <= self.rect.y <= 300:
+        if 0 <= self.rect.x <= 50 and 0 <= self.rect.y <= 50:
             grey_tank.win = True
-        if 900 <= self.rect.x <= 950 and 250 <= self.rect.y <= 300:
+        if 950 <= self.rect.x <= 1000  and 550 <= self.rect.y <= 600:
             yellow_tank.win = True
 
 
-class Environment(pg.sprite.Sprite):
-    def __init__(self, kind, x, y):
+class Bomb(pg.sprite.Sprite):
+    def __init__(self, x, y):
         pg.sprite.Sprite.__init__(self)
-        self.kind = kind
-        if self.kind == "wall":
-            self.image = pg.transform.scale(pg.image.load("стена.png"), (50, 50))
-        elif self.kind == "water":
-            self.image = pg.transform.scale(pg.image.load("вода.png"), (50, 50))
+        self.image = pg.transform.scale(pg.image.load("бомба.png"), (30, 30))
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
@@ -100,12 +100,34 @@ pg.display.set_caption("Tanks")
 yellow_tank = Tank(["жёлтый_танчик_вверх.png",
                     "жёлтый_танчик_вниз.png",
                     "жёлтый_танчик_влево.png",
-                    "жёлтый_танчик_вправо.png"], 150, 300)
+                    "жёлтый_танчик_вправо.png"], 120, 50)
 grey_tank = Tank(["серый_танчик_вверх.png",
                   "серый_танчик_вниз.png",
                   "серый_танчик_влево.png",
-                  "серый_танчик_вправо.png"], 900, 300)
+                  "серый_танчик_вправо.png"], 930, 600)
 base = pg.image.load("база.png")
+bombs = pg.sprite.Group()
+bombs.add(
+    Bomb(100, 100),
+    Bomb(440, 67),
+    Bomb(900, 330),
+    Bomb(754, 500),
+    Bomb(325, 234),
+    Bomb(234, 432),
+    Bomb(856, 213),
+    Bomb(763, 278),
+    Bomb(182, 118),
+    Bomb(75, 391),
+    Bomb(384, 350),
+    Bomb(20, 513),
+    Bomb(540, 303),
+    Bomb(588, 104),
+    Bomb(511, 481),
+    Bomb(159, 259),
+    Bomb(648, 70)
+)
+yellow_tank_can_move, grey_tank_can_move = True, True
+bang = pg.transform.scale(pg.image.load("взрыв.png"), (50, 50))
 while True:
     for i in pg.event.get():
         if i.type == pg.QUIT:
@@ -202,7 +224,6 @@ while True:
                 grey_tank.move_down = False
                 grey_tank.move_up = False
     if not yellow_tank.win and not grey_tank.win:
-        yellow_tank_can_move, grey_tank_can_move = True, True
         screen.fill((0, 0, 0))
         if yellow_tank_can_move:
             yellow_tank.move()
@@ -210,19 +231,31 @@ while True:
             grey_tank.move()
         screen.blit(yellow_tank.image, yellow_tank.rect)
         screen.blit(grey_tank.image, grey_tank.rect)
-        screen.blit(base, (0, 250))
-        screen.blit(base, (950, 250))
+        screen.blit(base, (0, 0))
+        screen.blit(base, (950, 550))
+        bombs.draw(screen)
+        if pg.sprite.spritecollideany(yellow_tank, bombs):
+            yellow_tank_can_move = False
+            screen.blit(bang, yellow_tank.rect)
+        if pg.sprite.spritecollideany(grey_tank, bombs):
+            grey_tank_can_move = False
+            screen.blit(bang, grey_tank.rect)
         if yellow_tank.made_a_shot:
             screen.blit(yellow_tank.shell.image, yellow_tank.shell.rect)
             yellow_tank.shell.fly()
         if grey_tank.made_a_shot:
             screen.blit(grey_tank.shell.image, grey_tank.shell.rect)
             grey_tank.shell.fly()
+        if (not yellow_tank_can_move) and (not grey_tank_can_move):
+            msg = pg.image.load("никто не победил.png")
+            screen.blit(msg, (250, 250))
     elif yellow_tank.win:
         msg = pg.image.load("жёлтый победил.png")
+        screen.blit(bang, grey_tank.rect)
         screen.blit(msg, (250, 250))
     elif grey_tank.win:
         msg = pg.image.load("серый победил.png")
+        screen.blit(bang, yellow_tank.rect)
         screen.blit(msg, (250, 250))
     pg.display.update()
     clock.tick(120)
